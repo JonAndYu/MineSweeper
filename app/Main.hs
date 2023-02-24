@@ -37,13 +37,6 @@ type Board = [[Square]]
 -- Board Creation
 -------------------
 
--- We will hard code the number of bombs to be
--- floor(1/8 * boardLength * boardWidth)
--- 
--- generateBombAmount :: (RealFrac a) => a -> a -> Integer
--- generateBombAmount len width = floor (len * width * 0.125)
-
--- createBombLocation :: (Integral a) => Int -> Int -> a -> IO [(Int, Int)]
 createBombLocation :: (Integral a) => Int -> Int -> a -> IO [Location]
 createBombLocation len width amt = sequence [ randomLocation | _ <- [1..amt]]
     where
@@ -52,14 +45,22 @@ createBombLocation len width amt = sequence [ randomLocation | _ <- [1..amt]]
             y <- randomRIO (0, width)
             return (Location x y)
 
--- createRow :: Int -> Int -> Int -> [Location] -> [Square]
--- createRow xPos yPos width bombLocations = []
+createRow :: Int -> Int -> Int -> [Location] -> [Square]
+createRow xPos yPos width bombLocations
+    | Location xPos yPos `elem` bombLocations = Square { location = Location xPos yPos, isMine = True , neighboringMines = 0, playerMarking = Untouched } : createRow (xPos + 1) yPos width bombLocations
+    | xPos < width = Square { location = Location xPos yPos, isMine = False, neighboringMines = 0, playerMarking = Untouched } : createRow (xPos + 1) yPos width bombLocations
+    | otherwise = []
 
--- createBoard :: Int -> Int -> Int -> Int -> [Location] -> [[Square]]
--- createBoard xPos yPos length width bombLocations = []
+createBoard :: Int -> Int -> Int -> Int -> [Location] -> Board
+createBoard xPos yPos width len bombLocations 
+    | yPos < len = createRow xPos yPos len bombLocations : createBoard xPos (yPos + 1) len width bombLocations
+    | otherwise = []
+
 
 main :: IO ()
 main = do
     let x = 10
-    tuples <- createBombLocation 8 10 10
-    print tuples
+    locations <- createBombLocation 8 10 10
+    -- locations is no longer an io, so we'd need to pass that into our board generator
+    print (createBoard 0 0 10 8 locations)
+    -- print locations
