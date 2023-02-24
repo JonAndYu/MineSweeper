@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module Main (main) where
 import Data.List ()
 import System.IO ()
@@ -53,14 +54,20 @@ createRow xPos yPos width bombLocations
 
 createBoard :: Int -> Int -> Int -> Int -> [Location] -> Board
 createBoard xPos yPos width len bombLocations 
-    | yPos < len = createRow xPos yPos len bombLocations : createBoard xPos (yPos + 1) len width bombLocations
+    | yPos < len = createRow xPos yPos width bombLocations : createBoard xPos (yPos + 1) len width bombLocations
     | otherwise = []
+
+-- Creates a string that is pretty to print.
+displayBoard :: Board -> String
+displayBoard board = unlines $ map (unwords . map (show . getSquare)) board
+    where getSquare (Square (Location x y) _ _ _) = "( " ++ show x ++ "," ++ show y ++ " ) "
 
 
 main :: IO ()
 main = do
-    let x = 10
-    locations <- createBombLocation 8 10 10
+
+    locations <- createBombLocation 10 8 10
     -- locations is no longer an io, so we'd need to pass that into our board generator
-    print (createBoard 0 0 10 8 locations)
+    -- print (displayBoard (createBoard 0 0 10 8 locations))
     -- print locations
+    putStrLn ( displayBoard (createBoard 0 0 10 10 locations))
