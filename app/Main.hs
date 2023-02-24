@@ -29,7 +29,7 @@ data Square = Square
 
 data Location = Location Int Int deriving (Eq, Show)
 
-data PlayerMarking = Untouched | LostMine | Flagged | Visited deriving (Show)
+data PlayerMarking = Untouched | LostMine | Flagged | Visited deriving (Eq, Show)
 
 -- A gameboard is defined as 
 type Board = [[Square]]
@@ -42,13 +42,28 @@ createBombLocation :: (Integral a) => Int -> Int -> a -> IO [Location]
 createBombLocation len width amt = sequence [ randomLocation | _ <- [1..amt]]
     where
         randomLocation = do
-            x <- randomRIO (0, len)
-            y <- randomRIO (0, width)
+            x <- randomRIO (0, len - 1)
+            y <- randomRIO (0, width - 1)
             return (Location x y)
 
+
+-- Determining the Location around a specific cell
+offsets :: [Location]
+offsets = [Location x y | x <- [-1, 0, 1], y <- [-1, 0, 1], (x, y) /= (0, 0)]
+
+addOffset :: Location -> Location -> Location
+addOffset (Location x1 y1) (Location x2 y2) = Location (x1 + x2) (y1 + y2)
+
+iterateNeighbors :: Location -> Int -> Int -> [Location]
+iterateNeighbors selectedLocation width height = [Location x y | 
+    Location x y <- map (addOffset selectedLocation) offsets, 
+    x >= 0 && x < width && y >= 0 && y < height
+    ]
+
+-- Creating the overall board
 createRow :: Int -> Int -> Int -> [Location] -> [Square]
 createRow xPos yPos width bombLocations
-    | Location xPos yPos `elem` bombLocations = Square { location = Location xPos yPos, isMine = True , neighboringMines = 0, playerMarking = Untouched } : createRow (xPos + 1) yPos width bombLocations
+    | Location xPos yPos `elem` bombLocations && xPos < width = Square { location = Location xPos yPos, isMine = True , neighboringMines = 0, playerMarking = Untouched } : createRow (xPos + 1) yPos width bombLocations
     | xPos < width = Square { location = Location xPos yPos, isMine = False, neighboringMines = 0, playerMarking = Untouched } : createRow (xPos + 1) yPos width bombLocations
     | otherwise = []
 
@@ -60,14 +75,17 @@ createBoard xPos yPos width len bombLocations
 -- Creates a string that is pretty to print.
 displayBoard :: Board -> String
 displayBoard board = unlines $ map (unwords . map (show . getSquare)) board
-    where getSquare (Square (Location x y) _ _ _) = "( " ++ show x ++ "," ++ show y ++ " ) "
+    where getSquare (Square (Location x y) isMine neighboringMines _) = " " ++ show isMine ++ " "
 
 
 main :: IO ()
 main = do
-
-    locations <- createBombLocation 10 8 10
+    let boardWidth = 8
+    let boardHeight = 8
+    let bombAmount = 15
+    locations <- createBombLocation boardWidth boardHeight bombAmount
     -- locations is no longer an io, so we'd need to pass that into our board generator
     -- print (displayBoard (createBoard 0 0 10 8 locations))
     -- print locations
-    putStrLn ( displayBoard (createBoard 0 0 10 10 locations))
+    -- putStrLn ( displayBoard (createBoard 0 0 boardWidth boardHeight locations))
+    print ( iterateNeighbors (Location 0 1) boardWidth boardHeight)
