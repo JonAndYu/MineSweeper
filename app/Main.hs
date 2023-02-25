@@ -7,7 +7,6 @@ import System.Directory ()
 import System.Random (randomRIO)
 import Data.Array
 import Data.Time (TimeLocale(time12Fmt))
-import qualified GHC.TypeLits as function
 
 -------------------
 -- Data Definitions
