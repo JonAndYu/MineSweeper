@@ -68,8 +68,8 @@ iterateNeighbors selectedLocation width height = [Location x y |
 incrementBombCount :: Square -> Square
 incrementBombCount (Square w x y z) = Square {location = w, isMine = x, neighboringMines = y + 1, playerMarking = z}
 
-updateSquares :: Location -> Board -> (Square -> Square) -> Board
-updateSquares (Location i j) oldBoard f = [[if Location r c == Location i j then f x else x | (c, x) <- zip [0..] row] | (r, row) <- zip [0..] oldBoard]
+updateSquares :: [Location] -> Board -> (Square -> Square) -> Board
+updateSquares lst oldBoard f = [[if Location r c `elem` lst then f x else x | (c, x) <- zip [0..] row] | (r, row) <- zip [0..] oldBoard]
 -- updateElement (i, j) lst = take i lst ++ [take j row ++ [newVal] ++ drop (j+1) row | row <- [lst !! i]] ++ drop (i+1) lst
 --     where newVal = (lst !! i) !! j + 1
 
@@ -110,7 +110,7 @@ main = do
     -- print locations
     let board = createBoard 0 0 boardWidth boardHeight locations
     putStrLn ( displayBoard(board) )
-    let newBoard = updateSquares (Location 0 1) board incrementBombCount
+    let newBoard = updateSquares (iterateNeighbors (Location 0 1) boardWidth boardHeight ) board incrementBombCount
     putStrLn ( displayBoard (newBoard))
     -- print ( iterateNeighbors (Location 0 1) boardWidth boardHeight)
     -- print array (((1,1),(3,3)) [((i,j),i*j) | i <- [1..3], j <- [1..3]])
