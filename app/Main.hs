@@ -22,7 +22,7 @@ import Data.Time (TimeLocale(time12Fmt))
 --      - Flagged - Player has not visited, but marked it with a flag
 --      - Visited - Player has visited
 --
-data Square = Square 
+data Square = Square
     { location :: Location
     , isMine :: Bool
     , neighboringMines :: Int
@@ -57,16 +57,23 @@ addOffset :: Location -> Location -> Location
 addOffset (Location x1 y1) (Location x2 y2) = Location (x1 + x2) (y1 + y2)
 
 iterateNeighbors :: Location -> Int -> Int -> [Location]
-iterateNeighbors selectedLocation width height = [Location x y | 
-    Location x y <- map (addOffset selectedLocation) offsets, 
+iterateNeighbors selectedLocation width height = [Location x y |
+    Location x y <- map (addOffset selectedLocation) offsets,
     x >= 0 && x < width && y >= 0 && y < height
     ]
 
 -- Updating a specific square
 -- becased Lists are immutable you'd need to create a new cell every time
 
--- incrementBombCount :: Square -> Square
--- incrementBombCount (Square {w, x, y, z}) = Square {location = w, isMine = x, neighboringMines = y + 1, playerMarking = z}
+incrementBombCount :: Square -> Square
+incrementBombCount (Square w x y z) = Square {location = w, isMine = x, neighboringMines = y + 1, playerMarking = z}
+
+updateSquares :: Location -> Board -> (Square -> Square) -> Board
+updateSquares (Location i j) oldBoard f = [[if Location r c == Location i j then f x else x | (c, x) <- zip [0..] row] | (r, row) <- zip [0..] oldBoard]
+-- updateElement (i, j) lst = take i lst ++ [take j row ++ [newVal] ++ drop (j+1) row | row <- [lst !! i]] ++ drop (i+1) lst
+--     where newVal = (lst !! i) !! j + 1
+
+-- example usage: increment element at position (2,3)
 
 -- Creating the overall board
 createRow :: Int -> Int -> Int -> [Location] -> [Square]
@@ -76,7 +83,7 @@ createRow xPos yPos width bombLocations
     | otherwise = []
 
 createBoard :: Int -> Int -> Int -> Int -> [Location] -> Board
-createBoard xPos yPos width len bombLocations 
+createBoard xPos yPos width len bombLocations
     | yPos < len = createRow xPos yPos width bombLocations : createBoard xPos (yPos + 1) len width bombLocations
     | otherwise = []
 
@@ -89,7 +96,7 @@ createBoard xPos yPos width len bombLocations
 -- Creates a string that is pretty to print.
 displayBoard :: Board -> String
 displayBoard board = unlines $ map (unwords . map (show . getSquare)) board
-    where getSquare (Square (Location x y) isMine neighboringMines _) = " " ++ show isMine ++ " "
+    where getSquare (Square (Location x y) isMine neighboringMines _) = " " ++ show neighboringMines ++ " "
 
 
 main :: IO ()
@@ -101,6 +108,9 @@ main = do
     -- locations is no longer an io, so we'd need to pass that into our board generator
     -- print (displayBoard (createBoard 0 0 10 8 locations))
     -- print locations
-    putStrLn ( displayBoard (createBoard 0 0 boardWidth boardHeight locations))
+    let board = createBoard 0 0 boardWidth boardHeight locations
+    putStrLn ( displayBoard(board) )
+    let newBoard = updateSquares (Location 0 1) board incrementBombCount
+    putStrLn ( displayBoard (newBoard))
     -- print ( iterateNeighbors (Location 0 1) boardWidth boardHeight)
     -- print array (((1,1),(3,3)) [((i,j),i*j) | i <- [1..3], j <- [1..3]])
