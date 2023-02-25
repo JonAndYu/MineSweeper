@@ -70,10 +70,6 @@ incrementBombCount (Square w x y z) = Square {location = w, isMine = x, neighbor
 
 updateSquares :: [Location] -> Board -> (Square -> Square) -> Board
 updateSquares lst oldBoard f = [[if Location r c `elem` lst then f x else x | (c, x) <- zip [0..] row] | (r, row) <- zip [0..] oldBoard]
--- updateElement (i, j) lst = take i lst ++ [take j row ++ [newVal] ++ drop (j+1) row | row <- [lst !! i]] ++ drop (i+1) lst
---     where newVal = (lst !! i) !! j + 1
-
--- example usage: increment element at position (2,3)
 
 -- Creating the overall board
 createRow :: Int -> Int -> Int -> [Location] -> [Square]
@@ -87,17 +83,18 @@ createBoard xPos yPos width len bombLocations
     | yPos < len = createRow xPos yPos width bombLocations : createBoard xPos (yPos + 1) len width bombLocations
     | otherwise = []
 
+createCompleteBoard :: Int -> Int -> [Location] -> Board
+    -- foldr ([Location] -> Board -> Board) -> Initial Board -> [[Location]] -> Final Board
+createCompleteBoard width len bombLocations = foldr (\locations accBoard -> updateSquares locations accBoard incrementBombCount) (createBoard 0 0 width len bombLocations) [iterateNeighbors x width len | x <- bombLocations]
 -- _addBombNumbers :: Board -> Board
 -- _addBombNumbers board = 
 -- modifyArray :: Board -> Location -> Square -> Board
 -- modifyArray arr pos val = arr // [(pos, val)]
 
-
 -- Creates a string that is pretty to print.
 displayBoard :: Board -> String
 displayBoard board = unlines $ map (unwords . map (show . getSquare)) board
     where getSquare (Square (Location x y) isMine neighboringMines _) = " " ++ show neighboringMines ++ " "
-
 
 main :: IO ()
 main = do
@@ -112,5 +109,6 @@ main = do
     putStrLn ( displayBoard(board) )
     let newBoard = updateSquares (iterateNeighbors (Location 0 1) boardWidth boardHeight ) board incrementBombCount
     putStrLn ( displayBoard (newBoard))
+    putStrLn ( displayBoard(createCompleteBoard boardWidth boardHeight locations))
     -- print ( iterateNeighbors (Location 0 1) boardWidth boardHeight)
     -- print array (((1,1),(3,3)) [((i,j),i*j) | i <- [1..3], j <- [1..3]])
