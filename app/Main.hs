@@ -1,10 +1,12 @@
 {-# LANGUAGE InstanceSigs #-}
 module Main (main) where
 import Data.List ()
-import System.IO ()
+import System.IO (SeekMode (AbsoluteSeek))
 import Data.Char ()
 import System.Directory ()
 import System.Random (randomRIO)
+import Data.Array
+import Data.Time (TimeLocale(time12Fmt))
 
 -------------------
 -- Data Definitions
@@ -60,6 +62,12 @@ iterateNeighbors selectedLocation width height = [Location x y |
     x >= 0 && x < width && y >= 0 && y < height
     ]
 
+-- Updating a specific square
+-- becased Lists are immutable you'd need to create a new cell every time
+
+-- incrementBombCount :: Square -> Square
+-- incrementBombCount (Square {w, x, y, z}) = Square {location = w, isMine = x, neighboringMines = y + 1, playerMarking = z}
+
 -- Creating the overall board
 createRow :: Int -> Int -> Int -> [Location] -> [Square]
 createRow xPos yPos width bombLocations
@@ -71,6 +79,12 @@ createBoard :: Int -> Int -> Int -> Int -> [Location] -> Board
 createBoard xPos yPos width len bombLocations 
     | yPos < len = createRow xPos yPos width bombLocations : createBoard xPos (yPos + 1) len width bombLocations
     | otherwise = []
+
+-- _addBombNumbers :: Board -> Board
+-- _addBombNumbers board = 
+-- modifyArray :: Board -> Location -> Square -> Board
+-- modifyArray arr pos val = arr // [(pos, val)]
+
 
 -- Creates a string that is pretty to print.
 displayBoard :: Board -> String
@@ -87,5 +101,6 @@ main = do
     -- locations is no longer an io, so we'd need to pass that into our board generator
     -- print (displayBoard (createBoard 0 0 10 8 locations))
     -- print locations
-    -- putStrLn ( displayBoard (createBoard 0 0 boardWidth boardHeight locations))
-    print ( iterateNeighbors (Location 0 1) boardWidth boardHeight)
+    putStrLn ( displayBoard (createBoard 0 0 boardWidth boardHeight locations))
+    -- print ( iterateNeighbors (Location 0 1) boardWidth boardHeight)
+    -- print array (((1,1),(3,3)) [((i,j),i*j) | i <- [1..3], j <- [1..3]])

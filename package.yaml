@@ -24,6 +24,7 @@ dependencies:
 - random
 - directory
 - time
+- array
 
 ghc-options:
 - -Wall
