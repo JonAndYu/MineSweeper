@@ -66,10 +66,10 @@ iterateNeighbors selectedLocation width height = [Location x y |
 -- becased Lists are immutable you'd need to create a new cell every time
 
 incrementBombCount :: Square -> Square
-incrementBombCount (Square w x y z) = Square {location = w, isMine = x, neighboringMines = y + 1, playerMarking = z}
+incrementBombCount (Square w x y z) = Square {location = w, isMine = x, neighboringMines = (if x then 0 else 1) + y, playerMarking = z}
 
 updateSquares :: [Location] -> Board -> (Square -> Square) -> Board
-updateSquares lst oldBoard f = [[if Location r c `elem` lst then f x else x | (c, x) <- zip [0..] row] | (r, row) <- zip [0..] oldBoard]
+updateSquares lst oldBoard f = [[if Location c r `elem` lst then f x else x | (c, x) <- zip [0..] row] | (r, row) <- zip [0..] oldBoard]
 
 -- Creating the overall board
 createRow :: Int -> Int -> Int -> [Location] -> [Square]
@@ -94,7 +94,7 @@ createCompleteBoard width len bombLocations = foldr (\locations accBoard -> upda
 -- Creates a string that is pretty to print.
 displayBoard :: Board -> String
 displayBoard board = unlines $ map (unwords . map (show . getSquare)) board
-    where getSquare (Square (Location x y) isMine neighboringMines _) = " " ++ show neighboringMines ++ " "
+    where getSquare (Square (Location x y) isMine neighboringMines _) = "(" ++ (if isMine then "M:" else "o:") ++ show neighboringMines ++ ")"
 
 main :: IO ()
 main = do
@@ -103,12 +103,8 @@ main = do
     let bombAmount = 15
     locations <- createBombLocation boardWidth boardHeight bombAmount
     -- locations is no longer an io, so we'd need to pass that into our board generator
-    -- print (displayBoard (createBoard 0 0 10 8 locations))
-    -- print locations
     let board = createBoard 0 0 boardWidth boardHeight locations
-    putStrLn ( displayBoard(board) )
     let newBoard = updateSquares (iterateNeighbors (Location 0 1) boardWidth boardHeight ) board incrementBombCount
-    putStrLn ( displayBoard (newBoard))
-    putStrLn ( displayBoard(createCompleteBoard boardWidth boardHeight locations))
-    -- print ( iterateNeighbors (Location 0 1) boardWidth boardHeight)
-    -- print array (((1,1),(3,3)) [((i,j),i*j) | i <- [1..3], j <- [1..3]])
+    print locations
+    putStrLn ( displayBoard (createCompleteBoard boardWidth boardHeight locations))
+    putStrLn ( displayBoard (updateSquares (iterateNeighbors (head locations) boardWidth boardHeight) board incrementBombCount))
