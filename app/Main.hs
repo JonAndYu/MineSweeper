@@ -1,10 +1,10 @@
 {-# LANGUAGE InstanceSigs #-}
 module Main (main) where
-import Data.List ()
+import Data.List (nub)
 import System.IO (SeekMode (AbsoluteSeek))
 import Data.Char ()
 import System.Directory ()
-import System.Random (randomRIO)
+import System.Random (randomRIO, randomRs, newStdGen)
 import Data.Array
 import Data.Time (TimeLocale(time12Fmt))
 
@@ -40,18 +40,31 @@ type Board = [[Square]]
 -- Board Creation Helpers
 -------------------------
 
+help :: (Int, Int) -> Location
+help (x, y) = Location x y
+
 {- | Creates a list of random Locations which comprises of (x, y) coordinates, 0 <= x < len and 0 <= y < width
 TODO: https://github.com/JonAndYu/MineSweeper/issues/3
 TLDR: Potentially generates the same location, especially for small boards, We need them to be n unique locations.
 -}
-createBombLocation :: (Integral a) => Int -> Int -> a -> IO [Location]
-createBombLocation len width amt = sequence [ randomLocation | _ <- [1..amt]]
-  where
-    randomLocation = do
-        x <- randomRIO (0, len - 1)
-        y <- randomRIO (0, width - 1)
-        return (Location x y)
-
+-- createBombLocation :: (Integral a) => Int -> Int -> a -> [Location]
+-- createBombLocation len width amt = sequence [randomLocation | x <- [1..amt]]
+--   where
+--     randomLocation = do
+--         {-
+--         [Every coordinate within the board]
+--         rng a single coordinate,
+--         remove the single coordinate from the list 
+--         take another corodinate till you have what you need
+--         -}
+--         -- x <- randomRIO (0, len - 1)
+--         -- y <- randomRIO (0, width - 1)
+--         -- return (Location x y)
+--         g <- newStdGen 
+--         let list = [Location x y | x <- [0..len-1], y <- [0..width-1]] -- (0,0) (0,1) (0,2)... (n,n)
+--         let x = nub $ (randomRs (0, width*len - 1) g :: [Int]) -- return an index
+--         -- return (map (\i -> list !! i) x)
+--         return list !! head x
 
 -- | A mask of locations of all cardinal + ordinal directions from a given point, not including itself.
 offsets :: [Location]
@@ -108,6 +121,10 @@ createRow xPos yPos width bombLocations
     | xPos < width = Square { location = Location xPos yPos, isMine = False, neighboringMines = 0, playerMarking = Untouched } : createRow (xPos + 1) yPos width bombLocations
     | otherwise = []
 
+randomIndex len width amt = do
+    g <- newStdGen
+    return . take amt . nub $ (randomRs (0, len * width - 1) g :: [Int])
+
 {- | Recursively creates the empty board with the help of createRow.
     Populates the Board with [squares] (rows) of default values:
         Int         - The current column of the square. (Never changes)
@@ -129,16 +146,39 @@ createCompleteBoard width len bombLocations = foldr (\locations accBoard -> upda
 displayBoard :: Board -> String
 displayBoard board = unlines $ map (unwords . map (show . getSquare)) board
     where getSquare (Square (Location x y) isMine neighboringMines _) = "(" ++ (if isMine then "M:" else "o:") ++ show neighboringMines ++ ")"
+    -- where getSquare (Square (Location x y) isMine neighboringMines _) = "("++ show x ++ "," ++ show y++")"
 
 main :: IO ()
 main = do
     let boardWidth = 8
     let boardHeight = 8
     let bombAmount = 15
-    locations <- createBombLocation boardWidth boardHeight bombAmount
+    let possible = [Location x y | x <- [0..boardWidth - 1], y <- [0..boardHeight - 1]]
+    valx <- randomIndex boardWidth boardHeight 15
+    let locations = map (\i -> possible !! i) valx
+    -- print (possible)
+    -- print (valx)
+    -- print (map (\i -> possible !! i) valx)
+    -- let locations = (map (\i -> possible !! i) valx)
+    -- let locations = createBombLocation boardWidth boardHeight bombAmount
     -- locations is no longer an io, so we'd need to pass that into our board generator
     let board = createEmptyBoard 0 0 boardWidth boardHeight locations
     let newBoard = updateSquares (iterateNeighbors (Location 0 1) boardWidth boardHeight ) board incrementBombCount
     print locations
     putStrLn ( displayBoard (createCompleteBoard boardWidth boardHeight locations))
-    putStrLn ( displayBoard (updateSquares (iterateNeighbors (head locations) boardWidth boardHeight) board incrementBombCount))
+    -- putStrLn ( displayBoard (updateSquares (iterateNeighbors (locations) boardWidth boardHeight) board incrementBombCount))
+
+-- import Data.List
+-- import System.Random
+
+-- lst = [0..100]
+
+-- randomIndex len width amt = do
+--     g <- newStdGen
+--     return . take amt . nub $ (randomRs (0, len * width - 1) g :: [Int])
+
+-- main :: IO ()
+-- main = do
+--     let possible = [(x, y) | x <- [1..10], y <- [1..10]]
+--     valx <- randomIndex 10 10 15
+--     print (map (\i -> possible !! i) valx)
