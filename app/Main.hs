@@ -5,6 +5,7 @@ import Data.Char ()
 import System.Directory ()
 import System.Random (randomRs, newStdGen)
 import Text.Read (readMaybe)
+import qualified Control.Monad.IO.Class
 
 -------------------
 -- Data Definitions
@@ -48,13 +49,11 @@ type Board = [[Square]]
 -- Board Creation Helpers
 -------------------------
 
-help :: (Int, Int) -> Location
-help (x, y) = Location x y
-
 {- | Creates a list of random Locations which comprises of (x, y) coordinates, 0 <= x < len and 0 <= y < width
 TODO: https://github.com/JonAndYu/MineSweeper/issues/3
 TLDR: Potentially generates the same location, especially for small boards, We need them to be n unique locations.
 -}
+randomIndex :: Control.Monad.IO.Class.MonadIO m => Int -> Int -> Int -> m [Int]
 randomIndex len width amt = do
     g <- newStdGen
     return . take amt . nub $ (randomRs (0, len * width - 1) g :: [Int])
@@ -151,22 +150,18 @@ createEmptyBoard xPos yPos width len bombLocations
 createCompleteBoard :: Int -> Int -> [Location] -> Board
 createCompleteBoard width len bombLocations = foldr (\locations accBoard -> updateSquares locations accBoard incrementBombCount) (createEmptyBoard 0 0 width len bombLocations) [iterateNeighbors x width len | x <- bombLocations]
 
-createInitialGameState :: Board -> Int -> Int -> [Location] ->IO BoardState
+createInitialGameState :: Board -> Int -> Int -> [Location] -> IO BoardState
 createInitialGameState g w l bombs = do
     putStrLn ("Creating board with a width of " ++ show w ++ " and a length of " ++ show l ++ ". There are " ++ show (length bombs) ++ " on the board.")
     return BoardState { gameBoard = g, width = w, len = l, bombLocations = bombs, visitedBomb = False, avaliableNoneBombSpaces = w * l - length bombs, visitedSpaces = 0 }
 
-createFinishedGame :: BoardState -> IO BoardState
-createFinishedGame _ = do
-    putStrLn "Rerun the program to try again."
-    return BoardState { gameBoard = [[]], width = 0, len = 0, bombLocations = [], visitedBomb = False, avaliableNoneBombSpaces = 0, visitedSpaces = 0}
 -- Creates a string that is pretty to print.
 displayBoard :: BoardState -> String
-displayBoard (BoardState g _ _ _ _ _ _) = unlines $ map (unwords . map (show . getSquare)) g
+displayBoard (BoardState g _ _ _ _ _ _) = unlines $ map (unwords . map (show . getSquares)) g
     -- where getSquare (Square (Location x y) isMine neighboringMines _) = "(" ++ (if isMine then "M:" else "o:") ++ show neighboringMines ++ ")"
     -- where getSquare (Square (Location x y) isMine neighboringMines _) = "("++ show x ++ "," ++ show y++")"
   where
-    getSquare (Square (Location _ _) _ neighboringMines playerMarking)
+    getSquares (Square (Location _ _) _ neighboringMines playerMarking)
         | playerMarking == Untouched = " - "
         | playerMarking == Visited = " " ++ show neighboringMines ++ " "
         | playerMarking == Flagged = " F "
@@ -209,7 +204,7 @@ gameLoop boardState = do
     let newState = revealLocation input boardState
     return newState
 
-main :: IO (IO BoardState)
+main :: IO BoardState
 main = do
     let boardWidth = 8
     let boardHeight = 8
@@ -217,7 +212,8 @@ main = do
     let possible = [Location x y | x <- [0..boardWidth - 1], y <- [0..boardHeight - 1]]
     indices <- randomIndex boardWidth boardHeight bombAmount
     let locations = map (\i -> possible !! i) indices
-    game (createInitialGameState (createCompleteBoard boardWidth boardHeight locations) boardWidth boardHeight locations)
+    let initGameState = createInitialGameState (createCompleteBoard boardWidth boardHeight locations) boardWidth boardHeight locations
+    game initGameState
 
 isFinalState :: BoardState -> Bool
 isFinalState (BoardState _ _ _ _ lose nonBombs turns) = lose || (nonBombs == turns)
@@ -226,21 +222,21 @@ isFinalState (BoardState _ _ _ _ lose nonBombs turns) = lose || (nonBombs == tur
 winOrLose :: BoardState -> Bool
 winOrLose (BoardState _ _ _ _ lose _ _) = not lose
 
-winGame :: BoardState -> IO (IO BoardState)
+winGame :: BoardState -> IO BoardState
 winGame bs = do
     putStrLn "You Win!"
     putStrLn (displayFinishedBoard bs)
-    return (createFinishedGame bs)
+    return bs
 
-lostGame :: BoardState -> IO (IO BoardState)
+lostGame :: BoardState -> IO BoardState
 lostGame bs = do
     putStrLn "You lose!"
     putStrLn (displayFinishedBoard bs)
-    return (createFinishedGame bs)
+    return bs
 
-game :: IO BoardState -> IO (IO BoardState)
-game oldState = do
-    state <- oldState
+game :: IO BoardState -> IO BoardState
+game s = do
+    state <- s
     if isFinalState state then (if winOrLose state then winGame else lostGame) state
     else
       do
