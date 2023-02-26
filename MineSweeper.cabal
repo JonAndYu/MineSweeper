@@ -25,7 +25,8 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      GameBoard
+      RandomIndexGen
   other-modules:
       Paths_MineSweeper
   hs-source-dirs:
