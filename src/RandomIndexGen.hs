@@ -2,7 +2,7 @@ module RandomIndexGen ( randomIndex ) where
 
 import System.Random (randomRs, newStdGen)
 import Data.List (nub)
-import qualified Control.Monad.IO.Class
+import Control.Monad.IO.Class(MonadIO(..))
 
 {- | Creates a list of random Locations which comprises of (x, y) coordinates, 0 <= x < len and 0 <= y < width
 TODO: https://github.com/JonAndYu/MineSweeper/issues/3
