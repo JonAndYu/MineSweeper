@@ -1,12 +1,11 @@
 {-# LANGUAGE InstanceSigs #-}
 module Main (main) where
 import Data.List (nub)
-import System.IO (SeekMode (AbsoluteSeek))
 import Data.Char ()
 import System.Directory ()
-import System.Random (randomRIO, randomRs, newStdGen)
-import Data.Array
-import Data.Time (TimeLocale(time12Fmt))
+import System.Random (randomRs, newStdGen)
+import Text.Read (readMaybe)
+
 
 -------------------
 -- Data Definitions
@@ -33,6 +32,23 @@ data Location = Location Int Int deriving (Eq, Show)
 
 data PlayerMarking = Untouched | LostMine | Flagged | Visited deriving (Eq, Show)
 
+data BoardState = BoardState
+    { gameBoard :: Board
+    , width :: Int
+    , len :: Int
+    , bombLocations :: [Location]
+    , visitedBomb :: Bool
+    , avaliableNoneBombSpaces :: Int
+    , visitedSpaces :: Int
+    }
+
+-- data Board = Board
+--     { gameBoard :: [[Square]]
+--     , width :: Int
+--     , len :: Int
+--     , bombLocations :: [Location]
+--     }
+
 -- A gameboard is defined as 
 type Board = [[Square]]
 
@@ -47,25 +63,6 @@ help (x, y) = Location x y
 TODO: https://github.com/JonAndYu/MineSweeper/issues/3
 TLDR: Potentially generates the same location, especially for small boards, We need them to be n unique locations.
 -}
--- createBombLocation :: (Integral a) => Int -> Int -> a -> [Location]
--- createBombLocation len width amt = sequence [randomLocation | x <- [1..amt]]
---   where
---     randomLocation = do
---         {-
---         [Every coordinate within the board]
---         rng a single coordinate,
---         remove the single coordinate from the list 
---         take another corodinate till you have what you need
---         -}
---         -- x <- randomRIO (0, len - 1)
---         -- y <- randomRIO (0, width - 1)
---         -- return (Location x y)
---         g <- newStdGen 
---         let list = [Location x y | x <- [0..len-1], y <- [0..width-1]] -- (0,0) (0,1) (0,2)... (n,n)
---         let x = nub $ (randomRs (0, width*len - 1) g :: [Int]) -- return an index
---         -- return (map (\i -> list !! i) x)
---         return list !! head x
-
 randomIndex len width amt = do
     g <- newStdGen
     return . take amt . nub $ (randomRs (0, len * width - 1) g :: [Int])
@@ -95,12 +92,24 @@ getSquare :: Board -> Location -> Square
 getSquare board (Location x y) = board !! y !! x
 
 -- | Helper function to modify a squares PlayerMarking
-modifyMarking :: Square -> PlayerMarking -> Square
-modifyMarking (Square w x y z) marking = Square {location = w, isMine = x, neighboringMines = y, playerMarking = marking}
+revealMarking :: Square -> Square
+revealMarking (Square w x y z) = Square {location = w, isMine = x, neighboringMines = y, playerMarking = if x then LostMine else Visited }
 
 -- | Helper function to increment the bomb count at a given square.
 incrementBombCount :: Square -> Square
 incrementBombCount (Square w x y z) = Square {location = w, isMine = x, neighboringMines = (if x then 0 else 1) + y, playerMarking = z}
+
+revealLocation :: Location -> BoardState -> BoardState
+revealLocation location (BoardState g w l locations visitBomb avaNoneBombs visitedCount) = BoardState
+    { gameBoard = updateSquares [location] g revealMarking
+    , width = w
+    , len = l
+    , bombLocations = locations
+    , visitedBomb = (location `elem` locations) || visitBomb
+    , avaliableNoneBombSpaces = avaNoneBombs
+    , visitedSpaces = visitedCount + 1
+    }
+
 
 {- | Abstracted function that takes in:
         [Location]          - A list of locations that need to be modified.
@@ -127,8 +136,8 @@ updateSquares lst oldBoard f = [[if Location c r `elem` lst then f x else x | (c
 -}
 createRow :: Int -> Int -> Int -> [Location] -> [Square]
 createRow xPos yPos width bombLocations
-    | Location xPos yPos `elem` bombLocations && xPos < width = 
-        Square { location = Location xPos yPos, isMine = True , neighboringMines = 0, playerMarking = Untouched } 
+    | Location xPos yPos `elem` bombLocations && xPos < width =
+        Square { location = Location xPos yPos, isMine = True , neighboringMines = 0, playerMarking = Untouched }
         : createRow (xPos + 1) yPos width bombLocations
     | xPos < width = Square { location = Location xPos yPos, isMine = False, neighboringMines = 0, playerMarking = Untouched } : createRow (xPos + 1) yPos width bombLocations
     | otherwise = []
@@ -150,22 +159,46 @@ createEmptyBoard xPos yPos width len bombLocations
 createCompleteBoard :: Int -> Int -> [Location] -> Board
 createCompleteBoard width len bombLocations = foldr (\locations accBoard -> updateSquares locations accBoard incrementBombCount) (createEmptyBoard 0 0 width len bombLocations) [iterateNeighbors x width len | x <- bombLocations]
 
+createInitialGameState :: Board -> Int -> Int -> [Location] -> BoardState
+createInitialGameState g w l bombs = BoardState { gameBoard = g, width = w, len = l, bombLocations = bombs, visitedBomb = False, avaliableNoneBombSpaces = w * l - length bombs, visitedSpaces = 0 }
+
 -- Creates a string that is pretty to print.
-displayBoard :: Board -> String
-displayBoard board = unlines $ map (unwords . map (show . getSquare)) board
+displayBoard :: BoardState -> String
+displayBoard (BoardState g w l bombs _ _ _) = unlines $ map (unwords . map (show . getSquare)) g
     -- where getSquare (Square (Location x y) isMine neighboringMines _) = "(" ++ (if isMine then "M:" else "o:") ++ show neighboringMines ++ ")"
     -- where getSquare (Square (Location x y) isMine neighboringMines _) = "("++ show x ++ "," ++ show y++")"
-  where 
-    getSquare (Square (Location x y) isMine neighboringMines playerMarking) 
+  where
+    getSquare (Square (Location x y) isMine neighboringMines playerMarking)
         | playerMarking == Untouched = " - "
         | playerMarking == Visited = " " ++ show neighboringMines ++ " "
         | playerMarking == Flagged = " F "
         | otherwise = " X " -- Bomb
 
--- playGame :: IO(String)
--- playGame :: do
+parseInput :: String -> Maybe (Int, Int)
+parseInput input = case words input of
+                     [a, b] -> case (readMaybe a, readMaybe b) of
+                                 (Just x, Just y) -> Just (x, y)
+                                 _                -> Nothing
+                     _      -> Nothing
 
-
+{- | Given the length and width of a game board, 
+getUserInput obtains a valid location on the board.
+A location is valid if:
+    - It is unvisited
+    - 0 <= x < width
+    - 0 <= y < length
+-}
+getUserInput :: Board -> Int -> Int -> IO Location
+getUserInput board width len = do
+    putStrLn "Please enter in the form: x y"
+    input <- getLine
+    case parseInput input of
+        Just (a, b) -> do
+            if z == Visited
+            then getUserInput board width len
+            else return (Location a b)
+            where Square _ _ _ z = getSquare board (Location a b)
+        Nothing     -> getUserInput board width len
 
 main :: IO ()
 main = do
@@ -173,9 +206,12 @@ main = do
     let boardHeight = 8
     let bombAmount = 15
     let possible = [Location x y | x <- [0..boardWidth - 1], y <- [0..boardHeight - 1]]
-    indices <- randomIndex boardWidth boardHeight 15
+    indices <- randomIndex boardWidth boardHeight bombAmount
     let locations = map (\i -> possible !! i) indices
-    let board = createEmptyBoard 0 0 boardWidth boardHeight locations
-    let newBoard = updateSquares (iterateNeighbors (Location 0 1) boardWidth boardHeight ) board incrementBombCount
-    print locations
-    putStrLn ( displayBoard (createCompleteBoard boardWidth boardHeight locations) )
+    let board = createCompleteBoard boardWidth boardHeight locations
+    let boardState = createInitialGameState board boardWidth boardHeight locations
+
+    -- We want this section to loop.
+    putStrLn ( displayBoard boardState )
+    input <- getUserInput board boardWidth boardHeight
+    putStrLn( displayBoard (revealLocation input boardState) )
