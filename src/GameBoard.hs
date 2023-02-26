@@ -1,9 +1,16 @@
 module GameBoard 
     ( createCompleteBoard
+    , addOffset
     , displayBoard
     , displayFinishedBoard
     , revealLocation
     , getSquare
+    , iterateNeighbors
+    , incrementBombCount
+    , createRow
+    , revealMarking
+    , createEmptyBoard
+    , updateSquares
     , PlayerMarking(..)
     , BoardState(..)
     , Location(..)
@@ -31,7 +38,7 @@ data Square = Square
     , isMine :: Bool
     , neighboringMines :: Int
     , playerMarking :: PlayerMarking
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 data Location = Location Int Int deriving (Eq, Show)
 
