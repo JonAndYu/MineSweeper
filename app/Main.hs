@@ -6,7 +6,6 @@ import System.Directory ()
 import System.Random (randomRs, newStdGen)
 import Text.Read (readMaybe)
 
-
 -------------------
 -- Data Definitions
 -------------------
@@ -41,13 +40,6 @@ data BoardState = BoardState
     , avaliableNoneBombSpaces :: Int
     , visitedSpaces :: Int
     }
-
--- data Board = Board
---     { gameBoard :: [[Square]]
---     , width :: Int
---     , len :: Int
---     , bombLocations :: [Location]
---     }
 
 -- A gameboard is defined as 
 type Board = [[Square]]
@@ -159,20 +151,31 @@ createEmptyBoard xPos yPos width len bombLocations
 createCompleteBoard :: Int -> Int -> [Location] -> Board
 createCompleteBoard width len bombLocations = foldr (\locations accBoard -> updateSquares locations accBoard incrementBombCount) (createEmptyBoard 0 0 width len bombLocations) [iterateNeighbors x width len | x <- bombLocations]
 
-createInitialGameState :: Board -> Int -> Int -> [Location] -> BoardState
-createInitialGameState g w l bombs = BoardState { gameBoard = g, width = w, len = l, bombLocations = bombs, visitedBomb = False, avaliableNoneBombSpaces = w * l - length bombs, visitedSpaces = 0 }
+createInitialGameState :: Board -> Int -> Int -> [Location] ->IO BoardState
+createInitialGameState g w l bombs = do
+    putStrLn ("Creating board with a width of " ++ show w ++ " and a length of " ++ show l ++ ". There are " ++ show (length bombs) ++ " on the board.")
+    return BoardState { gameBoard = g, width = w, len = l, bombLocations = bombs, visitedBomb = False, avaliableNoneBombSpaces = w * l - length bombs, visitedSpaces = 0 }
 
+createFinishedGame :: BoardState -> IO BoardState
+createFinishedGame _ = do
+    putStrLn "Rerun the program to try again."
+    return BoardState { gameBoard = [[]], width = 0, len = 0, bombLocations = [], visitedBomb = False, avaliableNoneBombSpaces = 0, visitedSpaces = 0}
 -- Creates a string that is pretty to print.
 displayBoard :: BoardState -> String
-displayBoard (BoardState g w l bombs _ _ _) = unlines $ map (unwords . map (show . getSquare)) g
+displayBoard (BoardState g _ _ _ _ _ _) = unlines $ map (unwords . map (show . getSquare)) g
     -- where getSquare (Square (Location x y) isMine neighboringMines _) = "(" ++ (if isMine then "M:" else "o:") ++ show neighboringMines ++ ")"
     -- where getSquare (Square (Location x y) isMine neighboringMines _) = "("++ show x ++ "," ++ show y++")"
   where
-    getSquare (Square (Location x y) isMine neighboringMines playerMarking)
+    getSquare (Square (Location _ _) _ neighboringMines playerMarking)
         | playerMarking == Untouched = " - "
         | playerMarking == Visited = " " ++ show neighboringMines ++ " "
         | playerMarking == Flagged = " F "
         | otherwise = " X " -- Bomb
+
+displayFinishedBoard :: BoardState ->  String
+displayFinishedBoard (BoardState g _ _ _ _ _ _) = unlines $ map (unwords . map (show . getSquares)) g
+    where getSquares (Square _ isMine neighboringMines _) = " " ++ (if isMine then "X" else show neighboringMines ) ++ " "
+    -- where getSquare (Square (Location x y) isMine neighboringMines _) = "("++ show x ++ "," ++ show y++")"
 
 parseInput :: String -> Maybe (Int, Int)
 parseInput input = case words input of
@@ -188,19 +191,25 @@ A location is valid if:
     - 0 <= x < width
     - 0 <= y < length
 -}
-getUserInput :: Board -> Int -> Int -> IO Location
-getUserInput board width len = do
+getUserInput :: BoardState -> IO Location
+getUserInput (BoardState board width len w x y i) = do
     putStrLn "Please enter in the form: x y"
     input <- getLine
     case parseInput input of
         Just (a, b) -> do
             if z == Visited
-            then getUserInput board width len
+            then getUserInput (BoardState board width len w x y i)
             else return (Location a b)
             where Square _ _ _ z = getSquare board (Location a b)
-        Nothing     -> getUserInput board width len
+        Nothing     -> getUserInput (BoardState board width len w x y i)
 
-main :: IO ()
+gameLoop :: BoardState -> IO BoardState
+gameLoop boardState = do
+    input <- getUserInput boardState
+    let newState = revealLocation input boardState
+    return newState
+
+main :: IO (IO BoardState)
 main = do
     let boardWidth = 8
     let boardHeight = 8
@@ -208,10 +217,32 @@ main = do
     let possible = [Location x y | x <- [0..boardWidth - 1], y <- [0..boardHeight - 1]]
     indices <- randomIndex boardWidth boardHeight bombAmount
     let locations = map (\i -> possible !! i) indices
-    let board = createCompleteBoard boardWidth boardHeight locations
-    let boardState = createInitialGameState board boardWidth boardHeight locations
+    game (createInitialGameState (createCompleteBoard boardWidth boardHeight locations) boardWidth boardHeight locations)
 
-    -- We want this section to loop.
-    putStrLn ( displayBoard boardState )
-    input <- getUserInput board boardWidth boardHeight
-    putStrLn( displayBoard (revealLocation input boardState) )
+isFinalState :: BoardState -> Bool
+isFinalState (BoardState _ _ _ _ lose nonBombs turns) = lose || (nonBombs == turns)
+
+-- | True if player won, false if player hit bomb
+winOrLose :: BoardState -> Bool
+winOrLose (BoardState _ _ _ _ lose _ _) = not lose
+
+winGame :: BoardState -> IO (IO BoardState)
+winGame bs = do
+    putStrLn "You Win!"
+    putStrLn (displayFinishedBoard bs)
+    return (createFinishedGame bs)
+
+lostGame :: BoardState -> IO (IO BoardState)
+lostGame bs = do
+    putStrLn "You lose!"
+    putStrLn (displayFinishedBoard bs)
+    return (createFinishedGame bs)
+
+game :: IO BoardState -> IO (IO BoardState)
+game oldState = do
+    state <- oldState
+    if isFinalState state then (if winOrLose state then winGame else lostGame) state
+    else
+      do
+        putStrLn (displayBoard state)
+        game (gameLoop state)
