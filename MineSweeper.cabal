@@ -33,11 +33,8 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      array
-    , base >=4.7 && <5
-    , directory
+      base >=4.7 && <5
     , random
-    , time
   default-language: Haskell2010
 
 executable MineSweeper-exe
@@ -49,11 +46,8 @@ executable MineSweeper-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       MineSweeper
-    , array
     , base >=4.7 && <5
-    , directory
     , random
-    , time
   default-language: Haskell2010
 
 test-suite MineSweeper-test
@@ -66,10 +60,7 @@ test-suite MineSweeper-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       MineSweeper
-    , array
     , base >=4.7 && <5
-    , directory
     , hspec
     , random
-    , time
   default-language: Haskell2010
