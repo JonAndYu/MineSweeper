@@ -6,10 +6,11 @@ import RandomIndexGen
 
 main :: IO BoardState
 main = do
+    let n = 5
     -- | Defines the state of the board. Ensure that boardWidth = boardHeight and boardWidth * boardHeight < bombAmount
-    let boardWidth = 3
-    let boardHeight = 3
-    let bombAmount = 0
+    let boardWidth = n
+    let boardHeight = n
+    let bombAmount = 4
     let possible = [Location x y | x <- [0..boardWidth - 1], y <- [0..boardHeight - 1]]
     indices <- randomIndex boardWidth boardHeight bombAmount
     let locations = map (\i -> possible !! i) indices
@@ -36,13 +37,13 @@ winOrLose (BoardState _ _ _ _ lose _ _) = not lose
 winGame :: BoardState -> IO BoardState
 winGame bs = do
     putStrLn "You Win!"
-    putStrLn (displayFinishedBoard bs)
+    putStrLn (displayBoard bs dispFinishedBoardHelper)
     return bs
 -- | Reveals the full board and notifies the user of the defeat
 lostGame :: BoardState -> IO BoardState
 lostGame bs = do
     putStrLn "You lose!"
-    putStrLn (displayFinishedBoard bs)
+    putStrLn (displayBoard bs dispFinishedBoardHelper)
     return bs
 
 -- | Game loop. At each iteration checks if a lose/win condition is met. If not displays current state and starts need turn
@@ -52,7 +53,7 @@ playGame s = do
     if isFinalState state then (if winOrLose state then winGame else lostGame) state
     else
       do
-        putStrLn (displayBoard state)
+        putStrLn (displayBoard state dispGameBoardHelper)
         playGame (gameIteration state)
 
 -- | At each iteration, it will ask for a location and return a new state with that has the selected square revealed

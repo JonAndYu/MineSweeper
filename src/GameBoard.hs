@@ -2,7 +2,8 @@ module GameBoard
     ( createCompleteBoard
     , addOffset
     , displayBoard
-    , displayFinishedBoard
+    , dispFinishedBoardHelper
+    , dispGameBoardHelper
     , revealLocation
     , getSquare
     , iterateNeighbors
@@ -157,26 +158,27 @@ revealLocation location (BoardState g w l locations visitBomb avaNoneBombs visit
 -- Board Visualizers
 --------------------
 
+-- | Used for debugging purposes. Prints out xy coordinates
+dispCoordinateHelper :: Square -> String
+dispCoordinateHelper (Square (Location x y) _ _ _ ) = "(" ++ show x ++ "," ++ show y ++ ")"
+
+-- | Creates a n x m board when a win/lose condition is met
+dispFinishedBoardHelper :: Square -> String
+dispFinishedBoardHelper (Square _ isMine neighboringMines _) = " " ++ (if isMine then "X" else show neighboringMines ) ++ " "
+
 {- | Creates a n x m board
     " - " = Unvisted
     " # " = Visited
     Based on how the game logic is written, you will never see F or X when this function is called
 -}
-displayBoard :: BoardState -> String
-displayBoard (BoardState g _ _ _ _ _ _) = unlines $ map (unwords . map (show . getSquares)) g
-  where
-    getSquares (Square (Location _ _) _ neighboringMines playerMarking)
-        | playerMarking == Untouched = " - "
-        | playerMarking == Visited = " " ++ show neighboringMines ++ " "
-        | playerMarking == Flagged = " F "
-        | otherwise = " X " -- Bomb
+dispGameBoardHelper :: Square -> String
+dispGameBoardHelper (Square (Location _ _) _ neighboringMines playerMarking)
+    | playerMarking == Untouched = " - "
+    | playerMarking == Visited = " " ++ show neighboringMines ++ " "
+    | playerMarking == Flagged = " F "
+    | otherwise = " X " -- Bomb
 
--- | Creates a n x m board when a win/lose condition is met
-displayFinishedBoard :: BoardState ->  String
-displayFinishedBoard (BoardState g _ _ _ _ _ _) = unlines $ map (unwords . map (show . getSquares)) g
-    where getSquares (Square _ isMine neighboringMines _) = " " ++ (if isMine then "X" else show neighboringMines ) ++ " "
+-- | Generic function to display board on command line
+displayBoard :: Show b => BoardState -> (Square -> b) -> String
+displayBoard (BoardState g _ _ _ _ _ _) getSquares = unlines $ map (unwords . map (show . getSquares)) g
 
--- | Used for debugging purposes. Prints out xy coordinates
-displayCoordinateBoard :: BoardState -> String
-displayCoordinateBoard (BoardState g _ _ _ _ _ _) = unlines $ map (unwords . map (show . getSquares)) g
-    where getSquares (Square (Location x y) _ _ _ ) = "(" ++ show x ++ "," ++ show y ++ ")"
