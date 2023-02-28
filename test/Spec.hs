@@ -1,27 +1,8 @@
 module Main (main) where
 
---import Test.HUnit ()
 import Test.Hspec
 
 import GameBoard 
-    ( createCompleteBoard
-    , addOffset
-    , displayBoard
-    , displayFinishedBoard
-    , revealLocation
-    , getSquare
-    , iterateNeighbors
-    , incrementBombCount
-    , createRow
-    , revealMarking
-    , createEmptyBoard
-    , updateSquares
-    , PlayerMarking(..)
-    , BoardState(..)
-    , Location(..)
-    , Square(..)
-    , Board
-    )
 
 -- | Helper Function to hasten testing
 createDefaultSquare :: Location -> Square
@@ -36,6 +17,33 @@ createDefaultBomb loc = Square {location = loc
                                , isMine = True
                                , neighboringMines = 0
                                , playerMarking = Untouched}
+
+createVisitedSquare :: Location -> Square
+createVisitedSquare loc = Square {location = loc
+                                 , isMine = False
+                                 , neighboringMines = 0
+                                 , playerMarking = Visited }
+
+createVisitedBomb :: Location -> Square
+createVisitedBomb loc = Square {location = loc
+                               , isMine = True
+                               , neighboringMines = 0
+                               , playerMarking = LostMine}
+
+testBoard :: Board
+testBoard = [ [createDefaultSquare $ Location 0 0, createDefaultSquare $ Location 1 0, createDefaultBomb $ Location 2 0]
+            , [createDefaultBomb $ Location 0 1, createDefaultSquare $ Location 1 1, createDefaultBomb $ Location 2 1]
+            , [createDefaultSquare $ Location 0 2, createDefaultSquare $ Location 1 2, createDefaultSquare $ Location 2 2]]
+
+testBoardState :: BoardState
+testBoardState = BoardState { gameBoard = testBoard
+                            , width = 3
+                            , len = 3
+                            , bombLocations = [Location 2 0, Location 0 1, Location 2 1]
+                            , visitedBomb = False
+                            , avaliableNoneBombSpaces = 6
+                            , visitedSpaces = 0 }
+
 
 spec :: Spec
 spec = do
@@ -185,6 +193,33 @@ spec = do
     it "should do nothing if no location list is provided" $ do
         let emptyBoard = (createCompleteBoard 5 5 [])
         updateSquares [] emptyBoard incrementBombCount `shouldMatchList` emptyBoard
+
+  describe "revealLocation" $ do
+    it "should reveal the location of a Non bomb" $ do
+        let resBoard = [ [createDefaultSquare $ Location 0 0, createVisitedSquare $ Location 1 0, createDefaultBomb $ Location 2 0]
+                       , [createDefaultBomb $ Location 0 1, createDefaultSquare $ Location 1 1, createDefaultBomb $ Location 2 1]
+                       , [createDefaultSquare $ Location 0 2, createDefaultSquare $ Location 1 2, createDefaultSquare $ Location 2 2]]
+        let resBoardState = BoardState { gameBoard = resBoard
+                                       , width = 3
+                                       , len = 3
+                                       , bombLocations = [Location 2 0, Location 0 1, Location 2 1]
+                                       , visitedBomb = False
+                                       , avaliableNoneBombSpaces = 6
+                                       , visitedSpaces = 1 }
+        (revealLocation (Location 1 0) testBoardState) `shouldBe` resBoardState
+
+    it "should reveal the location of a bomb" $ do
+        let resBoard = [ [createDefaultSquare $ Location 0 0, createDefaultSquare $ Location 1 0, createDefaultBomb $ Location 2 0]
+                       , [createVisitedBomb $ Location 0 1, createDefaultSquare $ Location 1 1, createDefaultBomb $ Location 2 1]
+                       , [createDefaultSquare $ Location 0 2, createDefaultSquare $ Location 1 2, createDefaultSquare $ Location 2 2]]
+        let resBoardState = BoardState { gameBoard = resBoard
+                                       , width = 3
+                                       , len = 3
+                                       , bombLocations = [Location 2 0, Location 0 1, Location 2 1]
+                                       , visitedBomb = True
+                                       , avaliableNoneBombSpaces = 6
+                                       , visitedSpaces = 1 }
+        (revealLocation (Location 0 1) testBoardState) `shouldBe` resBoardState
 
   
 

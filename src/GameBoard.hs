@@ -52,7 +52,7 @@ data BoardState = BoardState
     , visitedBomb :: Bool
     , avaliableNoneBombSpaces :: Int
     , visitedSpaces :: Int
-    }
+    } deriving (Eq, Show)
 
 -- A gameboard is defined as 
 type Board = [[Square]]
@@ -135,7 +135,7 @@ getSquare board (Location x y) = board !! y !! x
 
 -- | Helper function to modify a squares PlayerMarking
 revealMarking :: Square -> Square
-revealMarking (Square w x y z) = Square {location = w, isMine = x, neighboringMines = y, playerMarking = if x then LostMine else Visited }
+revealMarking (Square w x y _) = Square {location = w, isMine = x, neighboringMines = y, playerMarking = if x then LostMine else Visited }
 
 -- | Helper function to increment the bomb count at a given square.
 incrementBombCount :: Square -> Square
