@@ -5,6 +5,7 @@ My collaborator and I intend to explore the viability of Haskell as a general pr
 Minesweeper is a classic single-player computer game that has been popular since its introduction in the early 1990s. The game is played on a n x n grid that represents a minefield, where each square of the grid can either be blank or contain a hidden mine. The objective of the game is to uncover all the squares on the grid without detonating any of the hidden mines.
 
 At the start of the game, the player is presented with a blank grid, and must begin by selecting a square on the command line to reveal its contents. If the square contains a mine, the game is over and the player loses. If the square is blank, then it will reveal a number indicating how many mines are in the adjacent squares. The player can then use this information to make educated guesses about where the remaining mines might be, and continue to reveal additional squares until all the non-mine squares have been uncovered.
+> The above 2 paragraphs were entirely written with ChatGPT
 
 ___
 ## Instructions to run game (Assumes you have stack, ghci, ghc):
